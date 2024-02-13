@@ -2,7 +2,7 @@
 **/*.rs.bk
 *#
 *~
+*.swp
 *.sdpa
-Cargo.lock
-target/*
-data/*
+target/
+data/

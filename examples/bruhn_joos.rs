@@ -84,9 +84,11 @@ pub fn main() {
     }
     .no_scale();
 
-    let result = -pb
-        .solve_csdp("maximum_strong_edge_degree")
-        .expect("Cannot run csdp");
+    let mut f = FlagSolver::new(pb, "maximum_strong_edge_degree");
+    f.init();
+    f.print_report(); // Write some informations in report.html
+
+    let result = -f.optimal_value.expect("Failed to get optimal value");
 
     println!("Optimal value: {}", result); // The answer must be 1.5
 }
