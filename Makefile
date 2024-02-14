@@ -1,7 +1,12 @@
-.PHONY: clean default
+.PHONY: clean clean-all default
+
+RUBBISH := ./certificate ./data/ ./*.sdpa ./report.html
 
 default:
 	@echo "empty"
 
 clean:
-	rm -rf ./certificate ./data/ ./target/ ./*.sdpa ./report.html
+	rm -rf ${RUBBISH}
+
+clean-all:
+	rm -rf ${RUBBISH} ./target
