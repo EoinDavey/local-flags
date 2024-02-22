@@ -221,7 +221,6 @@ checksum = "9f6d018fb95a0b59f854aed68ecd96ce2b80af7911b92b1fed3c4b1fa516b91b"
 [[package]]
 name = "flag-algebra"
 version = "0.3.0"
-source = "git+https://github.com/avangogo/rust-flag-algebra.git#c48bda0767e512565f24e10d7465ad002fbcf2ba"
 dependencies = [
  "arrayvec",
  "bincode",

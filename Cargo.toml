@@ -15,5 +15,6 @@ canonical-form = "0.10.0"
 num = "0.4.1"
 sprs-ldl = "0.7.0"
 sprs = "0.11"
-flag-algebra = { git="https://github.com/avangogo/rust-flag-algebra.git" }
+#flag-algebra = { git="https://github.com/avangogo/rust-flag-algebra.git" }
+flag-algebra = { path="../rust-flag-algebra" }
 itertools = "0.12.1"

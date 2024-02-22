@@ -69,14 +69,14 @@ fn ones(n: usize, k: usize) -> V {
 
 pub fn main() {
     init_default_log();
-    let n = 5;
+    let n = 4;
     let basis = Basis::new(n);
 
     let mut ineqs = vec![
         flags_are_nonnegative(basis),
-        ones(n, 1).untype().at_most(1.),
-        ones(n, 2).untype().at_most(1.),
-        ones(n, 3).untype().at_most(1.),
+        ones(n, 1).untype().equal(1.),
+        ones(n, 2).untype().equal(1.),
+        ones(n, 3).untype().equal(1.),
     ];
 
     ineqs.append(&mut Degree::regularity(basis));
