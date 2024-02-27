@@ -42,49 +42,31 @@ impl SubFlag<G> for TriangleFreeConnected {
     }
 }
 
-fn obj(n: usize) -> V {
-    Basis::new(n).qflag_from_coeff(move |g: &F, _| {
-        let mut res = 0;
-        for perm in (0..n).permutations(4) {
-            let cols: Vec<u8> = perm.iter().map(|i| g.content.color[*i]).collect();
-            if !equal(cols, vec![0, 1, 1, 0]) {
-                continue;
-            }
-            if !(g.content.content.edge(perm[0], perm[1])
-                && g.content.content.edge(perm[1], perm[2])
-                && g.content.content.edge(perm[2], perm[3]))
-            {
-                continue;
-            }
-            res += 1
-        }
-        assert!(res % 2 == 0);
-        res / 2
-    })
-}
-
 fn ones(n: usize, k: usize) -> V {
     Degree::project(&Colored::new(Graph::empty(k), vec![0; k]).into(), n)
 }
 
 pub fn main() {
     init_default_log();
-    let n = 4;
+    let n = 6;
     let basis = Basis::new(n);
+
+    let c5_path: F = Colored::new(Graph::new(4, &[(0, 1), (1, 2), (2, 3)]), vec![0, 1, 1, 0]).into();
+    let new_obj = Degree::project(&c5_path, n).untype();
 
     let mut ineqs = vec![
         flags_are_nonnegative(basis),
-        ones(n, 1).untype().equal(1.),
-        ones(n, 2).untype().equal(1.),
-        ones(n, 3).untype().equal(1.),
     ];
+    for i in 1..n {
+        ineqs.push(ones(n, i).untype().equal(1.))
+    }
 
     ineqs.append(&mut Degree::regularity(basis));
 
     let pb = Problem::<N, _> {
         ineqs,
         cs: basis.all_cs(),
-        obj: -obj(n),
+        obj: -new_obj,
     }
     .no_scale();
 
@@ -94,5 +76,5 @@ pub fn main() {
 
     let result = -f.optimal_value.expect("Failed to get optimal value");
 
-    println!("Optimal value: {}", result); // Expect answer to be 24 = 4!.
+    println!("Optimal value: {}", result);
 }
