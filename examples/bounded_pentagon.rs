@@ -1,5 +1,5 @@
 /// Bound the number of copies of C5 containing any particular
-/// vertex in a Δ regular graph.
+/// vertex in a triangle free Δ regular graph.
 use flag_algebra::flags::{Colored, Graph};
 use flag_algebra::*;
 use itertools::{equal, Itertools, iproduct};

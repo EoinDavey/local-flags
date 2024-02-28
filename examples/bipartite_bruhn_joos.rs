@@ -1,4 +1,5 @@
 /// Bound the local density of L(G)² for G bipartite and Δ regular.
+use canonical_form::Canonize;
 use flag_algebra::flags::{Colored, Graph};
 use flag_algebra::*;
 use itertools::{equal, iproduct, Itertools};
@@ -52,21 +53,19 @@ fn connected_edges(g: &F, e1: &[usize; 2], e2: &[usize; 2]) -> bool {
 // The three ways to split a 4-elements set into two parts of size 2
 const SPLIT: [([usize; 2], [usize; 2]); 3] = [([0, 1], [2, 3]), ([0, 2], [1, 3]), ([0, 3], [1, 2])];
 
-fn strong_density(basis: Basis<F>) -> V {
-    basis.qflag_from_coeff(|g: &F, _| {
-        let mut res = 0;
-        for (e1, e2) in &SPLIT {
-            if g.content.content.edge(e1[0], e1[1])
-                && g.content.content.edge(e2[0], e2[1])
-                && (e1.iter().any(|&v| g.content.color[v] <= 1))
-                && (e2.iter().any(|&v| g.content.color[v] <= 1))
-                && connected_edges(g, e1, e2)
-            {
-                res += 1
-            }
+fn pair_count(g: &F) -> N {
+    let mut res = 0.;
+    for (e1, e2) in &SPLIT {
+        if g.content.content.edge(e1[0], e1[1])
+            && g.content.content.edge(e2[0], e2[1])
+            && (e1.iter().any(|&v| g.content.color[v] <= 1))
+            && (e2.iter().any(|&v| g.content.color[v] <= 1))
+            && connected_edges(g, e1, e2)
+        {
+            res += 1.
         }
-        res
-    })
+    }
+    res
 }
 
 fn ones(n: usize, k: usize, col: u8) -> V {
@@ -75,29 +74,36 @@ fn ones(n: usize, k: usize, col: u8) -> V {
 
 pub fn main() {
     init_default_log();
-    let n = 4;
-    let basis = Basis::new(n);
+    let n = 7;
+    assert!(n >= 4);
+    let basis: Basis<F> = Basis::new(n);
 
-    let mut ineqs = vec![
-        flags_are_nonnegative(basis),
-        ones(n, 1, 0).untype().at_most(1.),
-        ones(n, 2, 0).untype().at_most(1.),
-        ones(n, 3, 0).untype().at_most(1.),
-        ones(n, 1, 1).untype().at_most(1.),
-        ones(n, 2, 1).untype().at_most(1.),
-        ones(n, 3, 1).untype().at_most(1.),
-    ];
+    let mut sum: V = basis.zero();
+    for f in Basis::<F>::new(4).get().iter() {
+        let cnt = pair_count(f);
+        if cnt == 0. {
+            continue
+        }
+        let aut_count = f.canonical().automorphisms().count() as f64;
 
+        let typed: V = Degree::project(f, n);
+
+        sum = sum + typed.untype() * (24. / aut_count) * cnt;
+    }
+
+    let mut ineqs = vec![flags_are_nonnegative(basis)];
+    for i in 1..=n {
+        ineqs.push(ones(n, i, 0).untype().at_most(1.));
+        ineqs.push(ones(n, i, 1).untype().at_most(1.));
+    }
     ineqs.append(&mut Degree::regularity(basis));
 
     let pb = Problem::<N, _> {
         ineqs,
         cs: basis.all_cs(),
-        obj: -strong_density(basis),
+        obj: -sum,
     }
     .no_scale();
-    
-    println!("CS Count: {}", pb.cs.len());
 
     let mut f = FlagSolver::new(pb, "bipartite_bruhn_joos");
     f.init();
@@ -105,5 +111,5 @@ pub fn main() {
 
     let result = -f.optimal_value.expect("Failed to get optimal value");
 
-    println!("Optimal value: {}", result); // Expect answer to be 24 = 4!.
+    println!("Optimal value: {}", result);
 }
