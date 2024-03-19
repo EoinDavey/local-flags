@@ -152,7 +152,7 @@ fn solve(eta: f64, basis: Basis<F>, n: usize, xy_edge: Type<F>, obj: &V) -> f64 
     }
     .no_scale();
 
-    let mut f = FlagSolver::new(pb, "strong_density").protect(0);
+    let mut f = FlagSolver::new(pb, "strong_density");
     f.init();
     f.print_report(); // Write some informations in report.html
 
@@ -172,7 +172,7 @@ fn solve(eta: f64, basis: Basis<F>, n: usize, xy_edge: Type<F>, obj: &V) -> f64 
 pub fn main() {
     init_default_log();
 
-    let n = 5; // Can be pushed to 5
+    let n = 4; // Can be pushed to 5
     let basis = Basis::new(n);
 
     let xy_edge = edge_type(X, Y);
@@ -204,4 +204,5 @@ pub fn main() {
         }
     }
     println!("Optimum: [{:.4}, {:.4}]", eta_l, eta_r);
+    // solve(0.2703, basis, n, xy_edge, &obj);
 }
