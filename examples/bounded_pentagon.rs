@@ -40,6 +40,35 @@ impl SubFlag<G> for TriangleFreeConnected {
             }
             return false
         }
+        /*
+        for (u, v, w, a, b) in iproduct!(0..n, 0..n, 0..n, 0..n, 0..n) {
+            if v == u || w == u || w == v || a ==u || a == v || a == w || b == u || b== v || b ==w || b == a {
+                continue
+            }
+            if !flag.content.edge(u, v) || !flag.content.edge(v, w) || !flag.content.edge(w, a)
+                || !flag.content.edge(a, b) || !flag.content.edge(b, u) {
+                continue
+            }
+            let mut cnt = 0;
+            if flag.color[u] == 0 {
+                cnt+=1;
+            }
+            if flag.color[v] == 0 {
+                cnt+=1;
+            }
+            if flag.color[w] == 0 {
+                cnt+=1;
+            }
+            if flag.color[a] == 0 {
+                cnt+=1;
+            }
+            if flag.color[b] == 0 {
+                cnt+=1;
+            }
+            if cnt == 1 {
+                return false;
+            }
+        }*/
         true
     }
 }
@@ -65,15 +94,20 @@ fn ones(n: usize, k: usize) -> V {
     Degree::project(&Colored::new(Graph::empty(k), vec![0; k]).into(), n)
 }
 
+fn obj(n: usize) -> V {
+    let c5_one_black: F = Colored::new(Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]), vec![0, 1, 1, 1, 1]).into();
+    let c5_two_black: F = Colored::new(Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]), vec![0, 1, 0, 1, 1]).into();
+
+    Degree::project(&c5_one_black, n).untype() + Degree::project(&c5_two_black, n).untype() * 2.0
+}
+
 pub fn main() {
     init_default_log();
-    let n = 5;
+    let n = 6;
     let basis = Basis::new(n);
 
-    //let c5_path: F = Colored::new(Graph::new(4, &[(0, 1), (1, 2), (2, 3)]), vec![0, 1, 1, 0]).into();
-    let c5_path: F = Colored::new(Graph::new(3, &[(0, 1)]), vec![0, 1, 0]).into();
-
-    let new_obj = Degree::project(&c5_path, n).untype();
+    // let c5_path: F = Colored::new(Graph::new(5, &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]), vec![0, 1, 0, 1, 1]).into();
+    // let new_obj = Degree::project(&c5_path, n).untype();
 
     let mut ineqs = vec![
         flags_are_nonnegative(basis),
@@ -88,7 +122,7 @@ pub fn main() {
     let pb = Problem::<N, _> {
         ineqs,
         cs: basis.all_cs(),
-        obj: -new_obj,
+        obj: -obj(n),
     }
     .no_scale();
 
