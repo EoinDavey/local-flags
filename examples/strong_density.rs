@@ -4,6 +4,7 @@ extern crate local_flags;
 
 use flag_algebra::flags::{CGraph, Colored};
 use flag_algebra::*;
+use flag_algebra::tools::latexify;
 use local_flags::Degree;
 use num::pow::Pow;
 
@@ -56,7 +57,8 @@ impl SubFlag<G> for StrongDensityFlag {
 
     fn is_in_subclass(flag: &G) -> bool {
         flag.is_connected_to(|i| flag.color[i] == X) && // components intersects X
-            shadow_edges_are_from_x_to_y(flag) // Shadow edges are in E(X, Y)
+            true
+            //shadow_edges_are_from_x_to_y(flag) // Shadow edges are in E(X, Y)
     }
 }
 
@@ -108,9 +110,24 @@ fn extension_in_x(t: Type<F>) -> V {
 // Equalities expressing that extensions in X have twice the weight of extensions through an edge
 fn size_of_x(n: usize) -> Vec<Ineq<N, F>> {
     let mut res = Vec::new();
-    for t in Type::types_with_size(n - 1) {
-        let diff = Degree::extension(t, 0) - extension_in_x(t) * 0.5;
-        res.push(diff.equal(0.).multiply_and_unlabel(Basis::new(n)));
+    for sz in 1..=n-1 {
+        for t in Type::types_with_size(sz) {
+            let diff = (Degree::extension(t, 0) * 2. - extension_in_x(t)) * Degree::extension(t, 0).pow(n-sz-1);
+            res.push(diff.untype().non_negative());
+        }
+    }
+    for sz in 1..=n-1 {
+        for t in Type::types_with_size(sz) {
+            let b1 = extension_in_x(t);
+            let ext = Degree::extension(t, 0);
+            for k in 2..=n-sz {
+                assert!(sz + k <= n);
+                let basis = Basis::new(sz + k).with_type(t);
+                let bk: V = basis.qflag_from_indicator(|g: &F, sig| (sig..g.size()).all(|idx| g.content.color[idx] == X));
+                let diff = bk - b1.pow(k);
+                res.push((diff * ext.pow(n-(sz+k))).untype().equal(0.));
+            }
+        }
     }
     res
 }
@@ -129,20 +146,26 @@ fn solve(eta: f64, basis: Basis<F>, n: usize, xy_edge: Type<F>, obj: &V) -> f64 
 
     // 1. The graph of non-shadow edges of E(X, Y) are not (2 - η)∆²-degenerated
     let ext: V = Degree::extension(xy_edge, 0);
-    let v1 = degenerated_strong_degree(xy_edge) - &ext * &ext * 2. * (2. - eta);
-    ineqs.push(v1.non_negative().multiply_and_unlabel(basis));
+    let v1 = (degenerated_strong_degree(xy_edge) - &ext * &ext * 2. * (2. - eta)) * ext.pow(n-4);
+    ineqs.push(v1.untype().non_negative());
 
     // 2. Every vertex has same degree ∆
-    ineqs.append(&mut Degree::weaker_regularity(basis, 3));
+    ineqs.append(&mut Degree::regularity(basis));
 
     // 3. X has size at most 2∆, expressed with the two following constraints
     // 3.1. The size of X is twice the degree of any vertex
     ineqs.append(&mut size_of_x(n));
 
     // 3.2. The number of n-flags included in X is at most (2∆ choose n) ≈ 2^n * (∆ choose n)
-    let flag_in_x =
-        basis.qflag_from_indicator(|g: &F, _| g.content.color.iter().all(|&c| c == X));
-    ineqs.push(flag_in_x.at_most(2.pow(n) as f64));
+    // let flag_in_x =
+    //  basis.qflag_from_indicator(|g: &F, _| g.content.color.iter().all(|&c| c == X));
+    //ineqs.push(flag_in_x.clone().equal(f64::pow(2., n as f64)));
+
+    let vertex: F = Colored::new(CGraph::new(1, &[]), vec![0]).into();
+    let b =  Basis::<F>::new(1).with_type(Type::from_flag(&vertex));
+    let ext = Degree::extension(Type::from_flag(&vertex), 0);
+    let b1: V = b.flag(&vertex);
+    ineqs.push((b1 * ext.pow(n-1)).untype().at_most(2.));
 
     // Assembling the problem
     let pb = Problem::<N, _> {
@@ -157,14 +180,16 @@ fn solve(eta: f64, basis: Basis<F>, n: usize, xy_edge: Type<F>, obj: &V) -> f64 
     f.print_report(); // Write some informations in report.html
 
     let sprs = -f.optimal_value.unwrap();
+    // println!("opt: {}", sprs);
+    // return sprs;
 
-    let sig = 1.-(sprs/2.);
+    let sig = 1.-(sprs/16.);
 
     let chi_f = 2. * (1.-(sig/2. - sig.pow(3./2.)/6.));
     let chi_rest = 2.-eta;
 
     let chi = f64::max(chi_f, chi_rest);
-    println!("η: {:.4}\ts: {:.4}\tσ: {:.4}\tΧ': {:.4}\tΧ: {:.4}", eta, sprs, sig, chi_f, chi);
+    println!("η: {}\ts: {}\tσ: {}\tΧ': {}\tΧ: {}", eta, sprs, sig, chi_f, chi);
 
     chi
 }
@@ -179,30 +204,34 @@ pub fn main() {
     let xx_edge = edge_type(X, X);
 
     // Objective function
+    // let obj = (degree_in_neighbourhood(xy_edge) * Degree::extension(xy_edge, 0).pow(n - 4))
+    //     .untype()
+    //     * 0.25
+    //     + (degree_in_neighbourhood(xx_edge) * Degree::extension(xx_edge, 0).pow(n - 4)).untype()
+    //         * 0.125;
     let obj = (degree_in_neighbourhood(xy_edge) * Degree::extension(xy_edge, 0).pow(n - 4))
         .untype()
-        * 0.25
-        + (degree_in_neighbourhood(xx_edge) * Degree::extension(xx_edge, 0).pow(n - 4)).untype()
-            * 0.125;
+        * 2.
+        + (degree_in_neighbourhood(xx_edge) * Degree::extension(xx_edge, 0).pow(n - 4)).untype();
 
-    // Ternary search
-    println!("Begin ternary search");
-    let mut eta_l = 0.;
-    let mut eta_r = 0.9;
-    while f64::abs(eta_l - eta_r) > EPS {
-        println!("Search Range: [{:.4}, {:.4}]; Gap {}", eta_l, eta_r, f64::abs(eta_l - eta_r));
-        let l_pt = eta_l + (eta_r - eta_l)/3.;
-        let r_pt = eta_l + 2.*(eta_r - eta_l)/3.;
+    // // Ternary search
+    // println!("Begin ternary search");
+    // let mut eta_l = 0.;
+    // let mut eta_r = 0.9;
+    // while f64::abs(eta_l - eta_r) > EPS {
+    //     println!("Search Range: [{:.4}, {:.4}]; Gap {}", eta_l, eta_r, f64::abs(eta_l - eta_r));
+    //     let l_pt = eta_l + (eta_r - eta_l)/3.;
+    //     let r_pt = eta_l + 2.*(eta_r - eta_l)/3.;
 
-        let l_opt = solve(l_pt, basis, n, xy_edge, &obj);
-        let r_opt = solve(r_pt, basis, n, xy_edge, &obj);
+    //     let l_opt = solve(l_pt, basis, n, xy_edge, &obj);
+    //     let r_opt = solve(r_pt, basis, n, xy_edge, &obj);
 
-        if l_opt < r_opt {
-            eta_r = r_pt;
-        } else {
-            eta_l = l_pt;
-        }
-    }
-    println!("Optimum: [{:.4}, {:.4}]", eta_l, eta_r);
-    // solve(0.2703, basis, n, xy_edge, &obj);
+    //     if l_opt < r_opt {
+    //         eta_r = r_pt;
+    //     } else {
+    //         eta_l = l_pt;
+    //     }
+    // }
+    // println!("Optimum: [{:.4}, {:.4}]", eta_l, eta_r);
+    solve(0.2703, basis, n, xy_edge, &obj);
 }
