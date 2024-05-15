@@ -51,9 +51,8 @@ impl SubFlag<G> for StrongDensityFlag {
     const HEREDITARY: bool = false;
 
     fn is_in_subclass(flag: &G) -> bool {
-        flag.is_connected_to(|i| flag.color[i] == X) && // components intersects X
-            // true
-            shadow_edges_are_from_x_to_y(flag) // Shadow edges are in E(X, Y)
+        flag.is_connected_to(|i| flag.color[i] == X) // components intersects X
+            // && shadow_edges_are_from_x_to_y(flag) // Shadow edges are in E(X, Y)
     }
 }
 
@@ -189,7 +188,7 @@ fn solve(eta: f64, basis: Basis<F>, n: usize, xy_edge: Type<F>, obj: &V) -> f64 
 pub fn main() {
     init_default_log();
 
-    let n = 4; // Can be pushed to 5
+    let n = 5; // Can be pushed to 5
     let basis = Basis::new(n);
 
     let xy_edge = edge_type(X, Y);
