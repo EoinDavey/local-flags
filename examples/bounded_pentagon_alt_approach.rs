@@ -1,5 +1,6 @@
 /// Bound the number of copies of C5 containing any particular
 /// vertex in a triangle free Δ regular graph.
+/// This file uses a less direct approach to achieve a tighter bound.
 use flag_algebra::flags::{Colored, Graph};
 use flag_algebra::*;
 use itertools::{equal, iproduct, Itertools};

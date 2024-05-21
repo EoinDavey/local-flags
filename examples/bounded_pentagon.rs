@@ -64,7 +64,6 @@ pub fn main() {
     }
 
     ineqs.append(&mut Degree::regularity(basis));
-    // ineqs.append(&mut size_of_x(n));
 
     let pb = Problem::<N, _> {
         ineqs,
@@ -74,11 +73,10 @@ pub fn main() {
     .no_scale();
 
     let mut f = FlagSolver::new(pb, "bounded_pentagon").protect(0);
-    f.minimize();
-    //f.init();
-    //f.print_report(); // Write some informations in report.html
+    f.init();
+    f.print_report(); // Write some informations in report.html
 
     let result = -f.optimal_value.expect("Failed to get optimal value");
 
-    println!("Optimal value: {}", result);
+    println!("Optimal value: {}", result); // Should be 0.25.
 }
