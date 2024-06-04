@@ -1,82 +1,53 @@
-#![allow(unused_must_use, unused_variables)]
-extern crate flag_algebra;
-extern crate local_flags;
-
-use flag_algebra::flags::{CGraph, Colored};
+/// Bound the strong neighbourhood density for G bipartite and Δ regular.
+/// Modified from bruhn_joos.rs
+use canonical_form::Canonize;
+use flag_algebra::flags::{Colored, Graph};
 use flag_algebra::*;
+use itertools::{equal, iproduct, Itertools};
 use local_flags::Degree;
-use num::pow::Pow;
-
-use std::iter::once;
 
 // ## I - Flag definition
-
-// # Defining the type `G` of flags used
-// We use Edge- and Vertex-colored Graphs
-// with vertices colored with 4 colors for the vertices (0, 1, 2, 3)
-// and 3 colors for the edges (0, 1, 2 where 0 means "no edge")
-type G = Colored<CGraph<3>, 4>;
-
-// # Color Names
-// Colors of vertices
+// We use 4 coloured graphs. Black and red represent neighbours of
+// the fixed edge. The other colours represent the rest of each component.
+type G = Colored<Graph, 4>;
 // Bipartite components are (0, 2) and (1, 3).
-const COMPS: [[u8; 2]; 2] = [[0, 2], [1, 3]];
+const COMP: [u8; 4] = [0, 1, 0, 1];
+// Colours 0, 1 correspond to the X set (those adjacent to our fixed edge).
+// 2 and 3 correspond to Y, the other vertices.
 const X_COLS: [u8; 2] = [0, 1];
 const Y_COLS: [u8; 2] = [2, 3];
 
-// Colors of edges (0 means non-edge)
-const EDGE: u8 = 1; // The edges to color
-const SHADOW_EDGE: u8 = 2; // The other edges
-
-// Ternary search precision
-const EPS: f64 = 1e-4;
-
-// # Restricting to a subclass `F`
-// To reduce the combinatorial explosion, we consider only subgraph where
-// * Shadow edges are all in E(X, Y)
-// * Connected components each contain an element of X
 #[derive(Debug, Clone, Copy)]
-pub enum StrongDensityFlag {}
-type F = SubClass<G, StrongDensityFlag>; // `F` is the type of restricted flags
+pub enum BipartStrongDensityGraph {}
+type F = SubClass<G, BipartStrongDensityGraph>;
 
-// Implementation of the subclass
-impl SubFlag<G> for StrongDensityFlag {
-    // Name of the subclass (mainly used to name the memoization folder in data/)
-    const SUBCLASS_NAME: &'static str = "Bipartite Strong density graphs";
+type N = f64;
+type V = QFlag<N, F>;
+
+impl SubFlag<G> for BipartStrongDensityGraph {
+    const SUBCLASS_NAME: &'static str = "Bipartite Strong Density Graphs";
 
     const HEREDITARY: bool = false;
 
     fn is_in_subclass(flag: &G) -> bool {
+        // Each connected component contains a vertex colored 0 or 1
         if !flag.is_connected_to(|i| X_COLS.contains(&flag.color[i])) {
             return false;
         }
-        // Bipartite check.
-        for u in 0..flag.size() {
-            for v in 0..u {
-                if flag.edge(u, v) == 0 {
-                    continue;
-                }
-                for comp in COMPS {
-                    if comp.contains(&flag.color[u]) && comp.contains(&flag.color[v]) {
-                        return false;
-                    }
-                }
-            }
+        // Graph is bipartite
+        if flag.content.edges().any(|(u, v)| COMP[flag.color[u] as usize] == COMP[flag.color[v] as usize]) {
+            return false;
         }
         true
     }
 }
 
-// ## II - Problem definition
-
-type N = f64; // Scalar field used
-type V = QFlag<N, F>; // Vectors of the flag algebra (quantum flags)
-
-// Returns wether `e1` and `e2` are adjacent in `L(g)^2`
-fn connected_edges(g: &F, e1: &[usize; 2], e2: &[usize; 2]) -> bool {
+// Returns whether `e1` and `e2` are adjacent in `L(G)^2`
+#[allow(non_snake_case)]
+fn connected_in_L2(g: &F, e1: &[usize; 2], e2: &[usize; 2]) -> bool {
     for &u1 in e1 {
         for &u2 in e2 {
-            if g.is_edge(u1, u2) {
+            if g.content.content.edge(u1, u2) {
                 return true;
             }
         }
@@ -84,119 +55,59 @@ fn connected_edges(g: &F, e1: &[usize; 2], e2: &[usize; 2]) -> bool {
     false
 }
 
-fn degenerated_strong_degree(t: Type<F>) -> V {
-    assert_eq!(t.size, 2); // t is the type of an edge
-    let basis = Basis::new(4).with_type(t);
-    basis.qflag_from_indicator(|g: &F, _| {
-        assert!(g.is_edge(0, 1));
-        g.edge(2, 3) == EDGE && connected_edges(g, &[0, 1], &[2, 3])
-    })
-}
+// The three ways to split a 4-elements set into two parts of size 2
+const SPLIT: [([usize; 2], [usize; 2]); 3] = [([0, 1], [2, 3]), ([0, 2], [1, 3]), ([0, 3], [1, 2])];
 
-fn degree_in_neighbourhood(t: Type<F>) -> V {
-    assert_eq!(t.size, 2);
-    let basis = Basis::new(4).with_type(t);
-    basis.qflag_from_indicator(|g: &F, _| {
-        (X_COLS.contains(&g.content.color[2]) || X_COLS.contains(&g.content.color[3]))
-            && g.edge(2, 3) == EDGE
-            && connected_edges(g, &[0, 1], &[2, 3])
-    })
-}
-
-fn objective(n: usize, xx_edge: Type<F>, xy_edges: [Type<F>; 2]) -> V {
-    return xy_edges
-        .into_iter()
-        .chain(once(xx_edge))
-        .map(|edge| {
-            (degree_in_neighbourhood(edge) * Degree::extension(edge, 0).pow(n - 4)).untype()
+// How many disjoint edges in g are connected in L(G)².
+fn pair_count(g: &F) -> N {
+    assert!(g.size() == 4);
+    return SPLIT
+        .iter()
+        .filter(|(e1, e2)| {
+            g.content.content.edge(e1[0], e1[1])
+                && g.content.content.edge(e2[0], e2[1])
+                && (e1.iter().any(|&v| X_COLS.contains(&g.content.color[v])))
+                && (e2.iter().any(|&v| X_COLS.contains(&g.content.color[v])))
+                && connected_in_L2(g, e1, e2)
         })
-        .reduce(|a, b| a + b)
-        .unwrap()
-        * 0.25;
-}
-
-// The type corresponding to a (non-shadow) edge with vertices colored  `color1` and `color2`
-fn edge_type(color1: u8, color2: u8) -> Type<F> {
-    let e: F = Colored::new(CGraph::new(2, &[((0, 1), EDGE)]), vec![color1, color2]).into();
-    assert!(StrongDensityFlag::is_in_subclass(&e.content));
-    Type::from_flag(&e)
-}
-
-// Sum of flags with type `t` and size `t.size + 1` where the extra vertex is in X
-fn extension_in_x(t: Type<F>) -> V {
-    let b = Basis::new(t.size + 1).with_type(t);
-    b.qflag_from_indicator(|g: &F, type_size| X_COLS.contains(&g.content.color[type_size]))
-        .named(format!("ext_in_x({{{}}})", t.print_concise()))
-}
-
-// Sum of flags with type `t` and size `t.size + 1` where the extra vertex is black
-fn extension_in_black(t: Type<F>) -> V {
-    let b = Basis::new(t.size + 1).with_type(t);
-    b.qflag_from_indicator(|g: &F, type_size| g.content.color[type_size] == 0)
-        .named(format!("ext_in_black({{{}}})", t.print_concise()))
-}
-
-// TODO Refactor w/ black & X case
-// Sum of flags with type `t` and size `t.size + 1` where the extra vertex is red
-fn extension_in_red(t: Type<F>) -> V {
-    let b = Basis::new(t.size + 1).with_type(t);
-    b.qflag_from_indicator(|g: &F, type_size| g.content.color[type_size] == 0)
-        .named(format!("ext_in_red({{{}}})", t.print_concise()))
-}
-
-// Equalities expressing that extensions in X have twice the weight of extensions through an edge
-fn size_of_x(n: usize) -> Vec<Ineq<N, F>> {
-    let mut res = Vec::new();
-    for t in Type::types_with_size(n - 1) {
-        let diff_x = Degree::extension(t, 0) - extension_in_x(t) * 0.5;
-        let diff_b = Degree::extension(t, 0) - extension_in_black(t);
-        let diff_r = Degree::extension(t, 0) - extension_in_red(t);
-        res.push(diff_x.equal(0.).untype());
-        res.push(diff_b.equal(0.).untype());
-        res.push(diff_r.equal(0.).untype());
-    }
-    res
+        .count() as f64;
 }
 
 fn ones(n: usize, k: usize, col: u8) -> V {
-    Degree::project(&Colored::new(CGraph::empty(k), vec![col; k]).into(), n)
+    Degree::project(&Colored::new(Graph::empty(k), vec![col; k]).into(), n)
 }
 
-fn solve(n: usize, eta: N) -> N {
-    let basis = Basis::<F>::new(n);
+pub fn main() {
+    init_default_log();
+    let n = 5; // Can be pushed higher for better bounds
+    assert!(n >= 4);
 
-    let xx_edge = edge_type(X_COLS[0], X_COLS[1]);
-    let xy_edges: [Type<F>; 2] = [
-        edge_type(X_COLS[0], Y_COLS[1]),
-        edge_type(X_COLS[1], Y_COLS[0]),
-    ];
+    let basis: Basis<F> = Basis::new(n);
 
-    // Linear constraints
-    let mut ineqs = vec![
-        flags_are_nonnegative(basis), // F >= 0 for every flag
-    ];
+    let mut sum: V = basis.zero();
+    for f in Basis::<F>::new(4).get().iter() {
+        let cnt = pair_count(f);
+        if cnt == 0. {
+            continue;
+        }
+        let aut_count = f.canonical().automorphisms().count() as f64;
 
-    // 1. The graph of non-shadow edges is not (2 - η)∆²-degenerated
-    for edge in xy_edges.into_iter().chain(once(xx_edge)) {
-        let ext: V = Degree::extension(edge, 0);
-        let v1 = (degenerated_strong_degree(edge) - ext.pow(2) * 2. * (2. - eta)) * ext.pow(n-4);
-        ineqs.push(v1.non_negative().untype());
+        let typed: V = Degree::project(f, n);
+
+        sum = sum + typed.untype() * (24. / aut_count) * cnt;
     }
 
-    // 2. Every vertex has same degree ∆
+    let mut ineqs = vec![flags_are_nonnegative(basis)];
+    for i in 1..=n {
+        ineqs.push(ones(n, i, 0).untype().at_most(1.));
+        ineqs.push(ones(n, i, 1).untype().at_most(1.));
+    }
     ineqs.append(&mut Degree::regularity(basis));
 
-    ineqs.append(&mut size_of_x(n));
-    for i in 1..=n {
-        ineqs.push(ones(n, i, 0).untype().equal(1.));
-        ineqs.push(ones(n, i, 1).untype().equal(1.));
-    }
-
-    // Assembling the problem
     let pb = Problem::<N, _> {
         ineqs,
-        cs: basis.all_cs(), // Use all Cauchy-Schwarz inequalities with a matching size
-        obj: -objective(n, xx_edge, xy_edges),
+        cs: basis.all_cs(),
+        obj: -sum,
     }
     .no_scale();
 
@@ -204,39 +115,9 @@ fn solve(n: usize, eta: N) -> N {
     f.init();
     f.print_report(); // Write some informations in report.html
 
-    let sprs = -f.optimal_value.unwrap();
-    let sig = 1. - (sprs / 2.);
+    let result = -f.optimal_value.expect("Failed to get optimal value");
 
-    let chi_f = 2. * (1. - (sig / 2. - sig.pow(3. / 2.) / 6.));
-    let chi_rest = 2. - eta;
+    let bound = result / 24.;
 
-    let chi = f64::max(chi_f, chi_rest);
-
-    println!("η: {:.4}\ts: {:.4}\tσ: {:.4}\tΧ': {:.4}\tΧ: {:.4}", eta, sprs, sig, chi_f, chi);
-    chi
-}
-
-pub fn main() {
-    init_default_log();
-
-    let n = 5;
-
-    println!("Begin ternary search");
-    let mut eta_l = 0.3;
-    let mut eta_r = 0.5;
-    while f64::abs(eta_l - eta_r) > EPS {
-        println!("Search Range: [{:.4}, {:.4}]; Gap {}", eta_l, eta_r, f64::abs(eta_l - eta_r));
-        let l_pt = eta_l + (eta_r - eta_l)/3.;
-        let r_pt = eta_l + 2.*(eta_r - eta_l)/3.;
-
-        let l_opt = solve(n, l_pt);
-        let r_opt = solve(n, r_pt);
-
-        if l_opt < r_opt {
-            eta_r = r_pt;
-        } else {
-            eta_l = l_pt;
-        }
-    }
-    println!("Optimum: [{:.4}, {:.4}]", eta_l, eta_r);
+    println!("Optimal bound: {:.4}Δ(G)⁴", bound);
 }

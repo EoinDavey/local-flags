@@ -2,21 +2,19 @@
 /// vertex in a triangle free Δ regular graph.
 use flag_algebra::flags::{Colored, Graph};
 use flag_algebra::*;
-use itertools::{equal, Itertools, iproduct};
+use itertools::{iproduct};
 use local_flags::Degree;
-
-use num::pow::Pow;
 
 type G = Colored<Graph, 2>;
 #[derive(Debug, Clone, Copy)]
-pub enum TriangleFreeConnected {}
-type F = SubClass<G, TriangleFreeConnected>;
+pub enum PentagonBoundGraphs {}
+type F = SubClass<G, PentagonBoundGraphs>;
 
 type N = f64;
 type V = QFlag<N, F>;
 
-impl SubFlag<G> for TriangleFreeConnected {
-    const SUBCLASS_NAME: &'static str = "Triangle Free Connected 2-colored graphs";
+impl SubFlag<G> for PentagonBoundGraphs {
+    const SUBCLASS_NAME: &'static str = "Two-Coloured Pentagon Bound Graphs";
 
     const HEREDITARY: bool = false;
 
@@ -25,20 +23,23 @@ impl SubFlag<G> for TriangleFreeConnected {
         if !flag.is_connected_to(|i| flag.color[i] == 0) {
             return false;
         }
-        for (u, v) in flag.content.edges() {
-            if flag.color[u] == 0 && flag.color[v] == 0 {
-                return false;
-            }
+        // No black-black edges.
+        if flag
+            .content
+            .edges()
+            .any(|(u, v)| flag.color[u] == 0 && flag.color[v] == 0)
+        {
+            return false;
         }
+        // No triangles.
         let n = flag.content.size();
         for (u, v, w) in iproduct!(0..n, 0..n, 0..n) {
             if u == v || u == w || v == w {
-                continue
+                continue;
             }
-            if !flag.content.edge(u, v) || !flag.content.edge(u, w) || !flag.content.edge(v, w) {
-                continue
+            if flag.content.edge(u, v) && flag.content.edge(u, w) && flag.content.edge(v, w) {
+                return false;
             }
-            return false
         }
         true
     }
@@ -53,12 +54,13 @@ pub fn main() {
     let n = 5;
     let basis = Basis::new(n);
 
-    let c5_path: F = Colored::new(Graph::new(4, &[(0, 1), (1, 2), (2, 3)]), vec![0, 1, 1, 0]).into();
-    let new_obj = Degree::project(&c5_path, n).untype();
+    let c5_path: F = Colored::new(
+            Graph::new(4, &[(0, 1), (1, 2), (2, 3)]), vec![0, 1, 1, 0])
+            .into();
+    let obj = Degree::project(&c5_path, n).untype();
 
-    let mut ineqs = vec![
-        flags_are_nonnegative(basis),
-    ];
+    let mut ineqs = vec![flags_are_nonnegative(basis)];
+
     for i in 1..=n {
         ineqs.push(ones(n, i).untype().equal(1.));
     }
@@ -68,11 +70,11 @@ pub fn main() {
     let pb = Problem::<N, _> {
         ineqs,
         cs: basis.all_cs(),
-        obj: -new_obj,
+        obj: -obj,
     }
     .no_scale();
 
-    let mut f = FlagSolver::new(pb, "bounded_pentagon").protect(0);
+    let mut f = FlagSolver::new(pb, "bounded_pentagon");
     f.init();
     f.print_report(); // Write some informations in report.html
 

@@ -1,34 +1,38 @@
 # local-flags
 
-Experimentations with [flag algebras](http://people.cs.uchicago.edu/~razborov/files/flag.pdf) for graphs of maximum degree `Δ`, when both `Δ` and `n/Δ` can be large.
+This repository contains the software which was used to prove the results in my MSc Mathematics thesis:
+TODO LINK. It contains a Rust implementation of the semidefinite method on local flags. This
+framework can be used to prove asymptotic bounds on subgraph densities relative to the maximum
+degree Δ(G) for Δ(G) large.
 
-This module contains a small set of helper functions and some examples built on top of a [flag algebra library](https://docs.rs/flag-algebra).
+In particular:
+- `examples/strong_edge_colouring.rs`: Proves the best known bound on the Erdős and Nešetřil
+  conjecture on strong edge colouring[^erdosnes].
+- `examples/bipartite_strong_edge_colouring.rs`. Proves the best known bound for the
+  bipartite special case conjectured by Faudree et al[^erdosnes].
+- `examples/bounded_pentagon.rs`: Proves a decent upper bound on the number of pentagons in a
+  triangle free Δ-regular graph.
+- `examples/bounded_pentagon_alt_approach.rs`: Proves a stronger upper bound on the same problem.
 
-## Requirements
+You can find the certificates of these programs for reference in the `certificates/` directory.
 
-You need to install cargo to compile Rust.
-```
-sudo apt install cargo
-```
+[^erdosnes]: *Induced matchings in bipartite graphs*, Faudree, R. J., Gyárfas, A., Schelp, R. H., & Tuza, Zs. (1989). Discrete Mathematics, 78(1–2), 83–87. https://doi.org/10.1016/0012-365X(89)90163-5
+
+## Dependencies
+
 You need to have the `csdp` command line installed to solve semi-definite optimization problems.
 ```
 sudo apt install cmake gfortran coinor-csdp
 ```
 
+This code relies on a slight modification of the
+[`rust-flag-algebra` package](https://crates.io/crates/flag-algebra)
+found at https://github.com/EoinDavey/rust-flag-algebra.
+
 ## Usage
 
-First go to the directory of a copy of the repo.
+To run one of the examples of the `example/` folder, for instance `example/bounded_pentagon.rs`.
 ```
-git clone git@github.com:avangogo/local-flags.git
-cd local-flags
-```
-You can check that `cargo` is installed and that you are at the right place  with
-```
-cargo test
-```
-
-To run one of the examples of the `example/` folder, for instance `example/strong_complete.rs`.
-```
-cargo run --release --example strong_complete
+cargo run --release --example bounded_pentagon
 ```
 The first compilation may be quite long. The first execution can also take time because the library needs to compute lists of graphs and the matrices of some flag operators. These later are stored in files for later computations. Eventually, the bottleneck is the SDP solver.
