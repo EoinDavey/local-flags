@@ -45,14 +45,7 @@ impl SubFlag<G> for BipartStrongDensityGraph {
 // Returns whether `e1` and `e2` are adjacent in `L(G)^2`
 #[allow(non_snake_case)]
 fn connected_in_L2(g: &F, e1: &[usize; 2], e2: &[usize; 2]) -> bool {
-    for &u1 in e1 {
-        for &u2 in e2 {
-            if g.content.content.edge(u1, u2) {
-                return true;
-            }
-        }
-    }
-    false
+    e1.iter().any(|u1| e2.iter().any(|u2| g.is_edge(*u1, *u2)))
 }
 
 // The three ways to split a 4-elements set into two parts of size 2

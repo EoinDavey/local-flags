@@ -69,14 +69,7 @@ type V = QFlag<N, F>; // Vectors of the flag algebra (quantum flags)
 // Returns whether `e1` and `e2` are adjacent in `L(G)^2`
 #[allow(non_snake_case)]
 fn connected_in_L2(g: &F, e1: &[usize; 2], e2: &[usize; 2]) -> bool {
-    for &u1 in e1 {
-        for &u2 in e2 {
-            if g.is_edge(u1, u2) {
-                return true;
-            }
-        }
-    }
-    false
+    e1.iter().any(|u1| e2.iter().any(|u2| g.is_edge(*u1, *u2)))
 }
 
 // Returns a vector representing the degree of an edge of type `t` in

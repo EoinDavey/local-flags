@@ -28,6 +28,7 @@ const NON_F_EDGE: u8 = 2; // The other edges.
 
 // Set to true to restrict flags to those without non-F edges going from
 // set X to Y. This gives a huge speedup but isn't proved yet to be possible WLOG.
+// Experimentally this always gives the same bound.
 const RESTRICT_NON_F_EDGES: bool = true;
 
 // Restricting to a subclass of local flags, those connected to a black vertex.
@@ -72,14 +73,7 @@ type V = QFlag<N, F>; // Vectors of the flag algebra
 // Returns whether `e1` and `e2` are adjacent in `L(G)^2`
 #[allow(non_snake_case)]
 fn connected_in_L2(g: &F, e1: &[usize; 2], e2: &[usize; 2]) -> bool {
-    for &u1 in e1 {
-        for &u2 in e2 {
-            if g.is_edge(u1, u2) {
-                return true;
-            }
-        }
-    }
-    false
+    e1.iter().any(|u1| e2.iter().any(|u2| g.is_edge(*u1, *u2)))
 }
 
 // Returns a vector representing the degree of an edge of type `t` in

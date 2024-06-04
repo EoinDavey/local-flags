@@ -4,5 +4,7 @@
 *~
 *.swp
 /*.sdpa
+/certificate
+/report.html
 target/
 data/
