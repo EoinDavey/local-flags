@@ -3,6 +3,6 @@
 *#
 *~
 *.swp
-*.sdpa
+/*.sdpa
 target/
 data/
