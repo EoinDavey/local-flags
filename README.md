@@ -20,19 +20,26 @@ You can find the certificates of these programs for reference in the `certificat
 
 ## Dependencies
 
+You need to have rust installed. I recommend installing via [rustup.rs](https://rustup.rs).
+
 You need to have the `csdp` command line installed to solve semi-definite optimization problems.
 ```
 sudo apt install cmake gfortran coinor-csdp
 ```
 
-This code relies on a slight modification of the
-[`rust-flag-algebra` package](https://crates.io/crates/flag-algebra)
-found at https://github.com/EoinDavey/rust-flag-algebra.
-
 ## Usage
 
-To run one of the examples of the `example/` folder, for instance `example/bounded_pentagon.rs`.
+To clone this repository run `git clone --recursive http://github.com/EoinDavey/local-flags`.
+The `--recursive` flag is required to include the `rust-flag-algebras` submodule which is a
+modification of [crates.io/crates/flag-algebra](https://crates.io/crates/flag-algebra).
+
+To run one of the scripts in the `example/` folder, e.g. `example/bounded_pentagon.rs`
+run
 ```
 cargo run --release --example bounded_pentagon
 ```
 The first compilation may be quite long. The first execution can also take time because the library needs to compute lists of graphs and the matrices of some flag operators. These later are stored in files for later computations. Eventually, the bottleneck is the SDP solver.
+
+> [!warning]
+> These programs can generate a lot of on-disk data, especially for high values of `n`
+> (the standard flag size search parameter).
