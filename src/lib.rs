@@ -6,3 +6,4 @@ extern crate flag_algebra;
 
 mod degree;
 pub use degree::Degree;
+pub use degree::vertex_orbits;

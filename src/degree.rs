@@ -10,7 +10,7 @@ use std::ops::{AddAssign, Neg};
 
 // Returns a list of representative of the orbit classes
 // of F under the action of its automorphism group
-fn vertex_orbits<F: Flag>(flag: &F) -> Vec<usize> {
+pub fn vertex_orbits<F: Flag>(flag: &F) -> Vec<usize> {
     let mut res = Vec::new();
     let mut orbits = BTreeSet::new();
     for i in 0..flag.size() {
