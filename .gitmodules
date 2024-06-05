@@ -1,0 +1,3 @@
+[submodule "rust-flag-algebra"]
+	path = rust-flag-algebra
+	url = git@github.com:EoinDavey/rust-flag-algebra

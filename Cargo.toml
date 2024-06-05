@@ -1,8 +1,7 @@
 [package]
 name = "local-flags"
 version = "0.1.0"
-description = "Experimetations with flag algebras for graphs of maximum degree Δ, when 1 ≪ Δ ≪ n."
-authors = ["Rémi de Verclos"]
+authors = ["Rémi de Verclos", "Eoin Davey"]
 edition = "2021"
 readme = "README.md"
 keywords = ["graph", "combinatorics", "optimization"]
@@ -15,6 +14,5 @@ canonical-form = "0.10.0"
 num = "0.4.1"
 sprs-ldl = "0.7.0"
 sprs = "0.11"
-#flag-algebra = { git="https://github.com/avangogo/rust-flag-algebra.git" }
-flag-algebra = { path="../rust-flag-algebra" }
+flag-algebra = { path="./rust-flag-algebra" }
 itertools = "0.12.1"
