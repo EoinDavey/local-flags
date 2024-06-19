@@ -1,7 +1,7 @@
 # local-flags
 
 This repository contains the software which was used to prove the results in my MSc Mathematics thesis:
-TODO LINK. It contains a Rust implementation of the semidefinite method on local flags. This
+(see thesis.pdf). It contains a Rust implementation of the semidefinite method on local flags. This
 framework can be used to prove asymptotic bounds on subgraph densities relative to the maximum
 degree Δ(G) for Δ(G) large.
 
